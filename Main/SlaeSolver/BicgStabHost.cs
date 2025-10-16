@@ -70,7 +70,7 @@ class BicgStabHost : ISlaeSolver
         }
     }
 
-    public (Real discrep, int iter) Solve(Types.Matrix matrix, Span<Real> b, Span<Real> x)
+    public (Real discrep, int iter) Solve(Types.IMatrix matrix, Span<Real> b, Span<Real> x)
     {
         AllocateTemps(x.Length);
 

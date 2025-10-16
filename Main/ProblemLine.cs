@@ -10,6 +10,7 @@ using System.Diagnostics;
 
 using SlaeBuilder;
 using Types;
+using static FiniteElements.Rectangle.Lagrange.BiLinear;
 
 class ProblemLine {
     TaskFuncs _funcs;
@@ -21,7 +22,7 @@ class ProblemLine {
     ComputationalDomain _computationalDomain;
     BoundaryCondition[] _boundaryConditions;
 
-    public Matrix matrix;
+    public IMatrix matrix;
     public Real[] b;
     public GlobalMatrixImplType buildType = GlobalMatrixImplType.Host;
 
@@ -121,10 +122,12 @@ class ProblemLine {
             m[3] = m[2] + 1;
 
             result =
-            ( q[m[0]] * (X[xi + 1] - x) * (Y[yi + 1] - y)
-            + q[m[1]] * (x - X[xi])     * (Y[yi + 1] - y)
-            + q[m[2]] * (X[xi + 1] - x) * (y - Y[yi])
-            + q[m[3]] * (x - X[xi])     * (y - Y[yi])) /hx/hy;
+                (
+                      q[m[0]] * (X[xi + 1] - x) * (Y[yi + 1] - y)
+                    + q[m[1]] * (x - X[xi])     * (Y[yi + 1] - y)
+                    + q[m[2]] * (X[xi + 1] - x) * (y - Y[yi])
+                    + q[m[3]] * (x - X[xi])     * (y - Y[yi])
+                ) / hx / hy;
         }
         return result;
     }

@@ -6,7 +6,7 @@ using Types;
 
 namespace Matrices;
 
-public class DiagMatrix : Matrix
+public class Diag9Matrix : IMatrix
 {
     // Left diagonal
     public Real[] Ld3 = [];
@@ -29,7 +29,7 @@ public class DiagMatrix : Matrix
     public int Gap;
     
     public int Size => Di.Length;
-    Span<Real> Matrix.Di => Di;
+    Span<Real> IMatrix.Di => Di;
 
     public SparkAlgos.Types.Matrix GetComputeMatrix()
     {

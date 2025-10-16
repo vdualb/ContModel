@@ -17,7 +17,7 @@
         <!-- Use double precision floating point numbers -->
         <DefineConstants>USE_DOUBLE;TRACE</DefineConstants>
     </PropertyGroup>
-    
+
     <ItemGroup>
         <None Update="ProblemParams.json">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

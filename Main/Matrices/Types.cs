@@ -1,7 +1,7 @@
 using Real = double;
 
 namespace Types;
-public interface Matrix
+public interface IMatrix
 {
     int Size { get; }
     // TODO: нужно для предобуславливания.
@@ -13,3 +13,8 @@ public interface Matrix
     // не нулевый, потому что так проще
     IEnumerable<Real> FlatNonZero();
 }
+
+// public interface IPatchable<T>
+// {
+    
+// }

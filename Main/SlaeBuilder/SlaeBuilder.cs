@@ -11,7 +11,7 @@ public interface ISlaeBuilder
     RectMesh Mesh { get; }
     GlobalMatrixImplType GlobalMatrixImpl { get; set; }
     static abstract ISlaeBuilder Construct(RectMesh mesh, TaskFuncs funcs);
-    (Matrix, Real[]) Build();
+    (IMatrix, Real[]) Build();
 }
 
 public enum GlobalMatrixImplType
@@ -24,24 +24,6 @@ public enum GlobalMatrixImplType
 }
 
 static class Shared {
-    public static readonly Real[,] LocalG1 = {
-        { 2, -2,  1, -1},
-        {-2,  2, -1,  1},
-        { 1, -1,  2, -2},
-        {-1,  1, -2,  2},
-    };
-    public static readonly Real[,] LocalG2 = {
-        { 2,  1, -2, -1},
-        { 1,  2, -1, -2},
-        {-2, -1,  2,  1},
-        {-1, -2,  1,  2},
-    };
-    public static readonly Real[,] LocalM = {
-        {4, 2, 2, 1},
-        {2, 4, 1, 2},
-        {2, 1, 4, 2},
-        {1, 2, 2, 4},
-    };
     
     // https://stackoverflow.com/a/16893641
     public static Real Add(ref Real location1, Real value)

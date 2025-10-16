@@ -43,7 +43,8 @@ public struct RefineParams
 
 public struct BoundaryCondition
 {
-    // нач. с 0
+    // в файлах нумерация с 1
+    // в программе - с 0
     public int Num;
     // тип краевого условия (первый, второй ...) нумеруется с 1
     public int Type;

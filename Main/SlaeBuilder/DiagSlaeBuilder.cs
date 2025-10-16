@@ -1,20 +1,39 @@
 using Real = double;
 
-using System.Collections.Concurrent;
 using System.Diagnostics;
 
 using Matrices;
 using Types;
-using static FiniteElements.Rectangular.BiLinear;
+using Dim2 = FiniteElements.Rectangle.Lagrange.BiLinear;
+using Dim1 = FiniteElements.Line.Lagrange.Linear;
 using static Quadrature.Gauss;
 using TelmaCore;
 
 namespace SlaeBuilder;
-using static Shared;
+
+class PatchVectorHAligned : IPatchVector
+{
+    public required int[] Dofs { get; init; }
+    public double[] Values { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
+}
+
+// class PatchVectorVAligned
+
+interface IPatchVector
+{
+    int[] Dofs { get; init; }
+    Real[] Values { get; init; }
+}
+
+interface IPatchMatrix
+{
+    int[] Dofs { get; init; }
+    Real[,] Values { get; init; } 
+}
 
 class DiagSlaeBuilder : ISlaeBuilder
 {
-    DiagMatrix _matrix;
+    Diag9Matrix _matrix;
     Real[] _b = [];
 
     readonly RectMesh _mesh;
@@ -26,14 +45,14 @@ class DiagSlaeBuilder : ISlaeBuilder
     public DiagSlaeBuilder(RectMesh mesh, TaskFuncs funcs)
     {
         _mesh = mesh;
-        _matrix = new DiagMatrix();
+        _matrix = new Diag9Matrix();
         _funcs = funcs;
     }
 
     public static ISlaeBuilder Construct(RectMesh mesh, TaskFuncs funcs)
         => new DiagSlaeBuilder(mesh, funcs);
 
-    public (Matrix, Real[]) Build()
+    public (IMatrix, Real[]) Build()
     {
         Trace.WriteLine($"Diag Builder: {GlobalMatrixImpl}");
 
@@ -50,6 +69,10 @@ class DiagSlaeBuilder : ISlaeBuilder
         BoundaryConditionsApply();
         Trace.WriteLine($"Conds: {sw.ElapsedMilliseconds}");
         Trace.Unindent();
+
+        // HACK: Добавка в правую часть от точечного источника
+        var idx = _mesh.GetDofAtInitNode(0, 2);
+        _b[idx] += 5;
 
         return (_matrix, _b);
     }
@@ -170,42 +193,122 @@ class DiagSlaeBuilder : ISlaeBuilder
         }
     }
 
-    void BoundaryConditionType2Apply(BoundaryCondition bc)
+    // HACK: две копипасты impl
+    void Cond2Impl(BoundaryCondition bc)
     {
         /* учёт разбиения сетки */
-        int x1 = _mesh.XAfterGridInit(bc.X1);
-        int x2 = _mesh.XAfterGridInit(bc.X2);
-        int y1 = _mesh.YAfterGridInit(bc.Y1);
-        int y2 = _mesh.YAfterGridInit(bc.Y2);
+        int xi1 = _mesh.XAfterGridInit(bc.X1);
+        int xi2 = _mesh.XAfterGridInit(bc.X2);
+        int yi1 = _mesh.YAfterGridInit(bc.Y1);
+        int yi2 = _mesh.YAfterGridInit(bc.Y2);
         /*  */
-
+        
         var num = bc.Num;
 
-        if (x1 == x2)
+        if (xi1 == xi2)
         {
-            for (int yi = y1; yi < y2; yi++)
+            // вертикальная граница
+            for (int yi = yi1; yi < yi2; yi++)
+            {
+                Real x = _mesh.X[xi1];
+                Real y0 = _mesh.Y[yi];
+                Real y1 = _mesh.Y[yi + 1];
+                var hy = y1 - y0;
+
+                var n = new int[2];
+                n[0] = yi * _mesh.X.Length + xi1;
+                n[1] = (yi + 1) * _mesh.X.Length + xi2;
+                
+                for (int i = 0; i < Dim1.LagrangeBasis.Length; i++)
+                {
+                    _b[n[i]] += Integrate1DOrder5(y0, y1, 
+                        y =>
+                        {
+                            // в координатах шаблонного базиса - [0;1]
+                            var y01 = (y - y0) / hy;
+                            return _funcs.Theta(num, x, y)
+                                * Dim1.LagrangeBasis[i](y01)
+                                * x;
+                        }
+                    );
+                }
+            }
+        }
+        else if (yi1 == yi2)
+        {
+            // горизонтальная граница
+            for (int xi = xi1; xi < xi2; xi++)
+            {
+                Real y = _mesh.Y[yi1];
+                Real x0 = _mesh.X[xi];
+                Real x1 = _mesh.X[xi + 1];
+                var hx = x1 - x0;
+
+                int[] n = [
+                    yi1 * _mesh.X.Length + xi,
+                    yi2 * _mesh.X.Length + xi + 1    
+                ];
+
+                for (int i = 0; i < Dim1.LagrangeBasis.Length; i++)
+                {
+                    _b[n[i]] += Integrate1DOrder5(x0, x1, 
+                        x =>
+                        {
+                            // в координатах шаблонного базиса - [0;1]
+                            var x01 = (x - x0) / hx;
+                            return _funcs.Theta(num, x, y)
+                                * Dim1.LagrangeBasis[i](x01)
+                                * x;
+                        }
+                    );
+                    
+                }
+            }
+        }
+        else
+        {
+            throw new ArgumentException("Странное краевое условие");
+        }
+    }
+    
+    void Cond2ImplOld(BoundaryCondition bc)
+    {
+        /* учёт разбиения сетки */
+        int xi1 = _mesh.XAfterGridInit(bc.X1);
+        int xi2 = _mesh.XAfterGridInit(bc.X2);
+        int yi1 = _mesh.YAfterGridInit(bc.Y1);
+        int yi2 = _mesh.YAfterGridInit(bc.Y2);
+        /*  */
+        
+        var num = bc.Num;
+
+        if (xi1 == xi2)
+        {
+            // вертикальная граница
+            for (int yi = yi1; yi < yi2; yi++)
             {
                 var h = _mesh.Y[yi + 1] - _mesh.Y[yi];
 
-                Real k1 = _funcs.Theta(num, _mesh.X[x1], _mesh.Y[yi]); // aka theta1
-                Real k2 = _funcs.Theta(num, _mesh.X[x2], _mesh.Y[yi + 1]);
-                int n1 = yi * _mesh.X.Length + x1;
-                int n2 = (yi + 1) * _mesh.X.Length + x2;
-
+                Real k1 = _funcs.Theta(num, _mesh.X[xi1], _mesh.Y[yi]); // aka theta1
+                Real k2 = _funcs.Theta(num, _mesh.X[xi2], _mesh.Y[yi + 1]);
+                int n1 = yi * _mesh.X.Length + xi1;
+                int n2 = (yi + 1) * _mesh.X.Length + xi2;
+                
                 _b[n1] += h * (2 * k1 + k2) / 6;
                 _b[n2] += h * (k1 + 2 * k2) / 6;
             }
         }
-        else if (y1 == y2)
+        else if (yi1 == yi2)
         {
-            for (int xi = x1; xi < x2; xi++)
+            // горизонтальная граница
+            for (int xi = xi1; xi < xi2; xi++)
             {
                 var h = _mesh.X[xi + 1] - _mesh.X[xi];
 
-                Real k1 = _funcs.Theta(num, _mesh.X[xi], _mesh.Y[y1]); // aka theta1
-                Real k2 = _funcs.Theta(num, _mesh.X[xi + 1], _mesh.Y[y2]);
-                int n1 = y1 * _mesh.X.Length + xi;
-                int n2 = y2 * _mesh.X.Length + xi + 1;
+                Real k1 = _funcs.Theta(num, _mesh.X[xi], _mesh.Y[yi1]); // aka theta1
+                Real k2 = _funcs.Theta(num, _mesh.X[xi + 1], _mesh.Y[yi2]);
+                int n1 = yi1 * _mesh.X.Length + xi;
+                int n2 = yi2 * _mesh.X.Length + xi + 1;
 
                 _b[n1] += h * (2 * k1 + k2) / 6;
                 _b[n2] += h * (k1 + 2 * k2) / 6;
@@ -216,8 +319,13 @@ class DiagSlaeBuilder : ISlaeBuilder
             throw new ArgumentException("Странное краевое условие");
         }
     }
+    
+    void BoundaryConditionType2Apply(BoundaryCondition bc)
+    {
+        Cond2Impl(bc);
+    }
 
-    void BoundaryConditionType3Apply(BoundaryCondition bc)
+    void Cond3ImplOld(BoundaryCondition bc)
     {
         /* учёт разбиения сетки */
         int x1 = _mesh.XAfterGridInit(bc.X1);
@@ -290,6 +398,147 @@ class DiagSlaeBuilder : ISlaeBuilder
             throw new ArgumentException("Странное краевое условие");
         }
     }
+    
+    void Cond3Impl(BoundaryCondition bc)
+    {
+        /* учёт разбиения сетки */
+        int xi1 = _mesh.XAfterGridInit(bc.X1);
+        int xi2 = _mesh.XAfterGridInit(bc.X2);
+        int yi1 = _mesh.YAfterGridInit(bc.Y1);
+        int yi2 = _mesh.YAfterGridInit(bc.Y2);
+        /*  */
+
+        var num = bc.Num;
+
+        var localB = new Real[2]; // 'hat B'
+        var localA = new Real[2, 2]; // 'hat A'
+        if (xi1 == xi2)
+        {
+            for (int yi = yi1; yi < yi2; yi++)
+            {
+                var y0 = _mesh.Y[yi];
+                var y1 = _mesh.Y[yi + 1];
+                var x = _mesh.X[xi1];
+
+                var hy = _mesh.Y[yi + 1] - _mesh.Y[yi];
+
+                for (int i = 0; i < Dim1.LagrangeBasis.Length; i++)
+                {
+                    for (int j = 0; j < Dim1.LagrangeBasis.Length; j++)
+                    {
+                        localA[i, j] = Integrate1DOrder5(y0, y1,
+                            y =>
+                            {
+                                // в координатах шаблонного базиса - [0;1]
+                                var y01 = (y - y0) / hy;
+                                return _funcs.Beta(num)
+                                    * Dim1.LagrangeBasis[i](y01)
+                                    * Dim1.LagrangeBasis[j](y01)
+                                    * x;
+                            }
+                        );
+                    }
+                }
+
+                for (int i = 0; i < Dim1.LagrangeBasis.Length; i++)
+                {
+                    localB[i] = Integrate1DOrder5(y0, y1, 
+                        y =>
+                        {
+                            // в координатах шаблонного базиса - [0;1]
+                            var y01 = (y - y0) / hy;
+                            return _funcs.Beta(num)
+                                * _funcs.uBeta(num, x, y)
+                                * Dim1.LagrangeBasis[i](y01)
+                                * x;
+                        }
+                    );
+                }
+                
+                var m = new int[2];
+                m[0] = yi * _mesh.X.Length + xi1;
+                m[1] = (yi + 1) * _mesh.X.Length + xi2;
+
+                _b[m[0]] += localB[0];
+                _b[m[1]] += localB[1];
+
+                _matrix.Di[m[0]] += localA[0, 0];
+                _matrix.Di[m[1]] += localA[1, 1];
+
+                _matrix.Rd2[m[0]] += localA[0, 1];
+                _matrix.Ld2[m[0]] += localA[1, 0];
+            }
+        }
+        else if (yi1 == yi2)
+        {
+            // по горизонтали
+            // TODO: даёт неверное решение
+            throw new NotImplementedException("Третьи условия сломаны");
+            for (int xi = xi1; xi < xi2; xi++)
+            {
+                var x0 = _mesh.X[xi];
+                var x1 = _mesh.X[xi + 1];
+                var y = _mesh.Y[yi1];
+
+                var hx = _mesh.X[xi + 1] - _mesh.X[xi];
+
+                for (int i = 0; i < Dim1.LagrangeBasis.Length; i++)
+                {
+                    for (int j = 0; j < Dim1.LagrangeBasis.Length; j++)
+                    {
+                        localA[i, j] = Integrate1DOrder5(x0, x1,
+                            x =>
+                            {
+                                // в координатах шаблонного базиса - [0;1]
+                                var x01 = (x - x0) / hx;
+                                return _funcs.Beta(num)
+                                    * Dim1.LagrangeBasis[i](x01)
+                                    * Dim1.LagrangeBasis[j](x01)
+                                    * x;
+                            }
+                        );
+                    }
+                }
+
+                for (int i = 0; i < Dim1.LagrangeBasis.Length; i++)
+                {
+                    localB[i] = Integrate1DOrder5(x0, x1,
+                        x =>
+                        {
+                            // в координатах шаблонного базиса - [0;1]
+                            var x01 = (x - x0) / hx;
+                            return _funcs.Beta(num)
+                                * _funcs.uBeta(num, x, y)
+                                * Dim1.LagrangeBasis[i](x01)
+                                * x;
+                        }
+                    );
+                }
+
+                var m = new int[2];
+                m[0] = yi1 * _mesh.X.Length + xi;
+                m[1] = yi2 * _mesh.X.Length + xi + 1;
+
+                _b[m[0]] += localB[0];
+                _b[m[1]] += localB[1];
+
+                _matrix.Di[m[0]] += localA[0, 0];
+                _matrix.Di[m[1]] += localA[1, 1];
+
+                _matrix.Rd2[m[0]] += localA[0, 1];
+                _matrix.Ld2[m[0]] += localA[1, 0];
+            }
+        }
+        else
+        {
+            throw new ArgumentException("Странное краевое условие");
+        }
+    }
+    
+    void BoundaryConditionType3Apply(BoundaryCondition bc)
+    {
+        Cond3Impl(bc);
+    }
 
     void BoundaryConditionsApply()
     {
@@ -341,64 +590,8 @@ class DiagSlaeBuilder : ISlaeBuilder
         }
     }
 
-    // TODO: эта штука не зависит от формата хранения матрицы и
-    // её следовало бы переместить в другой файл
-    Real[,] ComputeLocal(PairF64 p0, PairF64 p1, int subDom)
-    {
-        var values = new Real[4, 4];
-
-        for (int i = 0; i < 4; i++)
-        {
-            for (int j = 0; j < 4; j++)
-            {
-                var funcMass = (PairF64 point) => {
-                    // в координатах шаблонного базиса, [0;1]
-                    var pB = (point + new PairF64(1, 1)) * 0.5;
-                    // в координатах элемента
-                    var pE = new PairF64(
-                        pB.X * (p1.X - p0.X) + p0.X,
-                        pB.Y * (p1.Y - p0.Y) + p0.Y
-                    );
-                    return _funcs.Gamma(subDom, pE.X, pE.Y)
-                        * LagrangeBasis[i](point)
-                        * LagrangeBasis[j](point)
-                        * pE.X;
-                };
-                
-                values[i, j] = Integrate2DOrder5(p0, p1, funcMass);
-                
-                var funcStiffness = (PairF64 point) => {
-                    // в координатах шаблонного базиса, [0;1]
-                    var pB = (point + new PairF64(1, 1)) * 0.5;
-                    // в координатах элемента
-                    var pE = new PairF64(
-                        pB.X * (p1.X - p0.X) + p0.X,
-                        pB.Y * (p1.Y - p0.Y) + p0.Y
-                    );
-                    return _funcs.Lambda(subDom, pE.X, pE.Y)
-                        *
-                        (
-                            LagrangeBasisGrad[i, 0](point)
-                            * LagrangeBasisGrad[j, 0](point)
-                        +
-                            LagrangeBasisGrad[i, 1](point)
-                            * LagrangeBasisGrad[j, 1](point)
-                        )
-                        * pE.X;
-                };
-                
-                values[i, j] += Integrate2DOrder5(p0, p1, funcStiffness);
-            }
-        }
-
-        return values;
-    }
-    
     void GlobalMatrixBuildImplHost()
     {
-        // csharp не нравится stackalloc в циклах
-        Span<Real> localB = stackalloc Real[4];
-
         for (int yi = 0; yi < _mesh.Y.Length - 1; yi++)
         {
             for (int xi = 0; xi < _mesh.X.Length - 1; xi++)
@@ -409,8 +602,8 @@ class DiagSlaeBuilder : ISlaeBuilder
                 PairF64 p0 = new(_mesh.X[xi], _mesh.Y[yi]);
                 PairF64 p1 = new(_mesh.X[xi + 1], _mesh.Y[yi + 1]);
                 
-                var local = ComputeLocal(p0, p1, subDom.Value);
-                
+                var local = Dim2.ComputeLocal(_funcs, p0, p1, subDom.Value);
+
                 int a = yi * _mesh.X.Length + xi;
 
                 _matrix.Di[a] += local[0, 0];
@@ -434,19 +627,7 @@ class DiagSlaeBuilder : ISlaeBuilder
 
                 _matrix.Di[a2 + 1] += local[3, 3];
 
-                /* правая часть */
-                Real f1 = _funcs.F(subDom.Value, p0.X, p0.Y);
-                Real f2 = _funcs.F(subDom.Value, p1.X, p0.Y);
-                Real f3 = _funcs.F(subDom.Value, p0.X, p1.Y);
-                Real f4 = _funcs.F(subDom.Value, p1.X, p1.Y);
-
-                Real hx = p1.X - p0.X;
-                Real hy = p1.Y - p0.Y;
-
-                localB[0] = hx * hy / 36 * (4 * f1 + 2 * f2 + 2 * f3 + f4);
-                localB[1] = hx * hy / 36 * (2 * f1 + 4 * f2 + f3 + 2 * f4);
-                localB[2] = hx * hy / 36 * (2 * f1 + f2 + 4 * f3 + 2 * f4);
-                localB[3] = hx * hy / 36 * (f1 + 2 * f2 + 2 * f3 + 4 * f4);
+                var localB = Dim2.ComputeLocalB(_funcs, p0, p1, subDom.Value);
 
                 _b[a] += localB[0];
                 _b[a + 1] += localB[1];

@@ -48,6 +48,22 @@ public class RectMesh
         };
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="ix1">координата узла до разбиения сетки</param>
+    /// <param name="iy1">координата узла до разбиения сетки</param>
+    /// <returns>номер узла после разбиения</returns>
+    public int GetDofAtInitNode(int x, int y)
+    {
+        /* учёт разбиения сетки */
+        int ix = XAfterGridInit(x);
+        int iy = YAfterGridInit(y);
+        /*  */
+
+        return iy * X.Length + ix;
+    }
+
     public int? GetSubdomNumAtElCoords (int x1, int y1)
     {
         foreach (var a in SubDomains)

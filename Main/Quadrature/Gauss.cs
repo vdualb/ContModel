@@ -12,17 +12,47 @@ public static class Gauss
         Func<PairF64, double> func
     ) {
         var quad = Get2DOrder5();
+        var hx = p1.X - p0.X;
+        var hy = p1.Y - p0.Y;
 
         var res = 0.0;
         foreach (var node in quad.Nodes)
         {
-            var point = node.Point;
-            var weight = node.Weight;
-            res += func(point) * weight;
+            var p = node.Point;
+            var w = node.Weight;
+            
+            var x = new PairF64 (
+                hx*(p.X+1.0)/2.0 + p0.X,
+                hy*(p.Y+1.0)/2.0 + p0.Y
+            );
+            
+            res += func(x) * w;
         }
 
         // с Якобианом
-        return res * (p1.X - p0.X) * (p1.Y - p0.Y) / 4.0;
+        return res * hx*hy / 4.0;
+    }
+    
+    public static double Integrate1DOrder5(
+        double p0, double p1,
+        Func<double, double> func
+    ) {
+        var quad = Get1DOrder5();
+        var h = p1 - p0;
+        
+        var res = 0.0;
+        foreach (var node in quad.Nodes)
+        {
+            var p = node.Point;
+            var w = node.Weight;
+
+            double x = h * (p + 1.0) / 2.0 + p0;
+
+            res += func(x) * w;
+        }
+
+        // с Якобианом
+        return res * h / 2.0;
     }
     
     static Quadrature<PairF64> Get2DOrder5()
@@ -39,17 +69,16 @@ public static class Gauss
              0.0,
              Math.Sqrt(0.6)
         };
-        double[] weights = {
+        double[] weights = [
             5 / 9.0,
             8 / 9.0,
             5 / 9.0
-        };
+        ];
 
         var res = new Node<double>[3];
 
         for (int i = 0; i < 3; i++)
         {
-            // есть кусочек от Якобиана и перехода на мастер-элемент
             res[i] = new Node<double>(points[i], weights[i]);
         }
 

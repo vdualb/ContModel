@@ -1,14 +1,14 @@
 using Real = double;
 
-class TaskRect4x5x2 : TaskFuncs
+class TaskRect4x5RZ : TaskFuncs
 {
-    public string Description => "Прямоугольник 4на5 x^2+y^2";
+    public string Description => "Прямоугольник 4на5 в цилиндрических координатах";
 
-    public Real Answer(int subdom, Real x, Real y)
+    public Real Answer(int subdom, Real r, Real z)
     {
         return subdom switch
         {
-            0 => (Real) x*x + y*y,
+            0 => r*r + z*z,
             _ => throw new ArgumentException("Неверный номер подобласти"),
         };
     }
@@ -18,20 +18,22 @@ class TaskRect4x5x2 : TaskFuncs
         return bcNum switch
         {
             0 => (Real)0.5,
+            1 => (Real)0.5,
+            2 => (Real)0.5,
             _ => throw new ArgumentException("Неверный номер граничного условия"),
         };
     }
 
-    public Real F(int subdom, Real x, Real y)
+    public Real F(int subdom, Real r, Real z)
     {
         return subdom switch
         {
-            0 => (Real)(x*x + y*y - 2),
+            0 => r*r + z*z - 3.0,
             _ => throw new ArgumentException("Неверный номер граничного условия"),
         };
     }
 
-    public Real Gamma(int subdom, Real x, Real y)
+    public Real Gamma(int subdom, Real r, Real z)
     {
         return subdom switch
         {
@@ -40,7 +42,7 @@ class TaskRect4x5x2 : TaskFuncs
         };
     }
 
-    public Real Lambda(int subdom, Real x, Real y)
+    public Real Lambda(int subdom, Real r, Real z)
     {
         return subdom switch
         {
@@ -49,7 +51,7 @@ class TaskRect4x5x2 : TaskFuncs
         };
     }
 
-    public Real Theta(int bcNum, Real x, Real y)
+    public Real Theta(int bcNum, Real r, Real z)
     {
         return bcNum switch
         {
@@ -59,17 +61,19 @@ class TaskRect4x5x2 : TaskFuncs
         };
     }
 
-    public Real uBeta(int bcNum, Real x, Real y)
+    public Real uBeta(int bcNum, Real r, Real z)
     {
         return bcNum switch
         {
-            0 => 2*y + x*x + 25,
+            0 => 2*z + Answer(0, r, z),
+            1 => -2*r + Answer(0, r, z),
+            2 => 2*r + Answer(0, r, z),
             _ => throw new ArgumentException("Некорректный номер условия"),
         };
     }
 
-    public Real Ug(int bcNum, Real x, Real y)
+    public Real Ug(int bcNum, Real r, Real z)
     {
-        return Answer(bcNum, x, y);
+        return Answer(0, r, z);
     }
 }
