@@ -1,8 +1,12 @@
+#if USE_DOUBLE
 using Real = double;
+#else
+using Real = float;
+#endif
 
 using MathShards.Fem.Common;
 
-class TaskElectro : TaskFuncs
+class TaskElectro : ITaskFuncs
 {
     public string Description => "Двухслойная среда";
 
@@ -11,12 +15,12 @@ class TaskElectro : TaskFuncs
         throw new NotSupportedException();
     }
 
-    public Real Sigma { get; set; } = 6;
+    public Real Sigma { get; set; } = (Real)6;
     public Real Lambda(int subdom, Real x, Real y)
     {
         return subdom switch
         {
-            0 => 5,
+            0 => (Real)5,
             1 => Sigma,
             _ => throw new ArgumentException("Неверный номер области"),
         };

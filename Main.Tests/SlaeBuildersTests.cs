@@ -1,3 +1,9 @@
+#if USE_DOUBLE
+using Real = double;
+#else
+using Real = float;
+#endif
+
 using static MathShards.Quadrature.Gauss;
 using MathShards.TelmaCore;
 using MathShards.SlaeBuilder.Fem;
@@ -40,7 +46,11 @@ class SlaeBuilders
         
         foreach (var (first, second) in nzd.Zip(nzm))
         {
+            #if USE_DOUBLE
             Assert.That(first, Is.EqualTo(second).Within(1e-12));
+            #else
+            Assert.That(first, Is.EqualTo(second).Within(1e-6));
+            #endif
         }
     }
 

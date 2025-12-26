@@ -21,6 +21,11 @@
     <Using Include="NUnit.Framework" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <!-- Use double precision floating point numbers -->
+    <DefineConstants>USE_DOUBLE</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../Main/Main.csproj" />
   </ItemGroup>

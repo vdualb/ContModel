@@ -1,8 +1,12 @@
+#if USE_DOUBLE
 using Real = double;
+#else
+using Real = float;
+#endif
 
 using MathShards.Fem.Common;
 
-class TaskRect4x5Exp : TaskFuncs
+public class TaskRect4x5Exp : ITaskFuncs
 {
     public string Description => "Прямоугольник 4на5 с экспонентой";
 
@@ -10,7 +14,7 @@ class TaskRect4x5Exp : TaskFuncs
     {
         return subdom switch
         {
-            0 => (Real)Math.Exp(x+y) + x,
+            0 => Real.Exp(x+y) + x,
             _ => throw new ArgumentException("Неверный номер подобласти"),
         };
     }
@@ -28,7 +32,7 @@ class TaskRect4x5Exp : TaskFuncs
     {
         return subdom switch
         {
-            0 => (Real)((y*y-1)*Math.Exp(x+y) + x*y*y),
+            0 => (y*y-1)*Real.Exp(x+y) + x*y*y,
             _ => throw new ArgumentException("Неверный номер граничного условия"),
         };
     }
@@ -46,7 +50,7 @@ class TaskRect4x5Exp : TaskFuncs
     {
         return subdom switch
         {
-            0 => (Real)0.5,
+            0 => 0.5f,
             _ => throw new ArgumentException("Неверный номер граничного условия"),
         };
     }
@@ -55,8 +59,8 @@ class TaskRect4x5Exp : TaskFuncs
     {
         return bcNum switch
         {
-            0 => (Real)(Math.Exp(4+y) + 1)/2,
-            1 => -(Real)(Math.Exp(1+y) + 1)/2,
+            0 => (Real.Exp(4 + y) + 1)/2,
+            1 => -(Real.Exp(1+y) + 1)/2,
             _ => throw new ArgumentException("Некорректный номер условия"),
         };
     }
@@ -65,7 +69,7 @@ class TaskRect4x5Exp : TaskFuncs
     {
         return bcNum switch
         {
-            0 => (Real)(2*Math.Exp(x+5) + x),
+            0 => 2*Real.Exp(x+5) + x,
             _ => throw new ArgumentException("Некорректный номер условия"),
         };
     }
@@ -74,10 +78,10 @@ class TaskRect4x5Exp : TaskFuncs
     {
         return bcNum switch
         {
-            0 => (Real)(Math.Exp(x+y) + x),
-            1 => (Real)(Math.Exp(x+y) + x),
-            2 => (Real)(Math.Exp(x+y) + x),
-            3 => (Real)(Math.Exp(x+y) + x),
+            0 => Real.Exp(x+y) + x,
+            1 => Real.Exp(x+y) + x,
+            2 => Real.Exp(x+y) + x,
+            3 => Real.Exp(x+y) + x,
             _ => throw new ArgumentException("Некорректный номер условия"),
         };
     }

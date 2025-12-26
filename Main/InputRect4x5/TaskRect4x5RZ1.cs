@@ -1,8 +1,12 @@
+#if USE_DOUBLE
 using Real = double;
+#else
+using Real = float;
+#endif
 
 using MathShards.Fem.Common;
 
-class TaskRect4x5RZ1 : TaskFuncs
+public class TaskRect4x5RZ1: ITaskFuncs
 {
     public string Description => "Прямоугольник 4на5 в цилиндрических координатах, полинов второй степени";
 

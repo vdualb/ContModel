@@ -1,8 +1,12 @@
+#if USE_DOUBLE
 using Real = double;
+#else
+using Real = float;
+#endif
 
 using MathShards.Fem.Common;
 
-class TaskRect4x5RZ2 : TaskFuncs
+public class TaskRect4x5RZ2: ITaskFuncs
 {
     public string Description => "Прямоугольник 4на5 в цилиндрических координатах, полинов второй степени";
 
@@ -30,7 +34,7 @@ class TaskRect4x5RZ2 : TaskFuncs
     {
         return subdom switch
         {
-            0 => r*r + z*z - 3.0,
+            0 => (Real)(r*r + z*z - 3.0),
             _ => throw new ArgumentException("Неверный номер граничного условия"),
         };
     }

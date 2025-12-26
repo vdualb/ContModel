@@ -1,8 +1,12 @@
+#if USE_DOUBLE
 using Real = double;
+#else
+using Real = float;
+#endif
 
 using MathShards.Fem.Common;
 
-public class TaskRect4x5x3 : TaskFuncs
+public class TaskRect4x5x3: ITaskFuncs
 {
     public string Description => "Прямоугольник 4на5 x^3+y^3";
 
@@ -55,8 +59,8 @@ public class TaskRect4x5x3 : TaskFuncs
     {
         return bcNum switch
         {
-            0 => 3.0/2.0*x*x,
-            1 => -3.0/2.0*x*x,
+            0 => (Real)(3.0/2.0*x*x),
+            1 => -(Real)(3.0/2.0*x*x),
             _ => throw new ArgumentException("Некорректный номер условия"),
         };
     }

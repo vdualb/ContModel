@@ -1,4 +1,8 @@
+#if USE_DOUBLE
 using Real = double;
+#else
+using Real = float;
+#endif
 
 using System.Globalization;
 using System.Diagnostics;
@@ -50,11 +54,11 @@ class DiagHalvesTest
             Rd1 = [..diag],
             Rd0 = [..diag],
         };
-        matrix.Rd0[0] += 0.5;
-        matrix.Ld0[0] += 0.5;
+        matrix.Rd0[0] += 0.5f;
+        matrix.Ld0[0] += 0.5f;
         Real[] b = [..identity];
-        b[0] += 0.5;        
-        b[1] += 0.5;
+        b[0] += 0.5f;        
+        b[1] += 0.5f;
 
         return (matrix, b);
     }

@@ -1,4 +1,8 @@
+#if USE_DOUBLE
 using Real = double;
+#else
+using Real = float;
+#endif
 
 using System.Globalization;
 using System.Diagnostics;
@@ -40,27 +44,28 @@ class MsrHalvesTest
 
     static (MsrMatrix matrix, Real[] b) SomeSlae() {
         Real[] identity = [1, 1, 1, 1, 1];
-        Real[] elems = [0.5, 0.5, 0.5, 0.5];
+        Real[] elems = [0.5f, 0.5f, 0.5f, 0.5f];
+
         var matrix = new MsrMatrix {
             Elems = [..elems],
             Ia = [0, 1, 2, 3, 3, 4],
             Ja = [1, 0, 3, 3],
             Di = [..identity],
         };
-        Real[] b = [1.5, 1.5, 1, 1, 1];
+        Real[] b = [1.5f, 1.5f, 1, 1, 1];
 
         return (matrix, b);
     } 
 
     static (MsrMatrix matrix, Real[] b) ComplexSlae() {
-        Real[] elems = [0.5, 0.5, 0.2, 0.3, 0.2, 0.5, 0.3, 0.5];
+        Real[] elems = [0.5f, 0.5f, 0.2f, 0.3f, 0.2f, 0.5f, 0.3f, 0.5f];
         var matrix = new MsrMatrix {
             Elems = [..elems],
             Ia = [0, 1, 4, 6, 7, 8],
             Ja = [1, 0, 2, 3, 1, 4, 1, 2],
-            Di = [1.5, 2, 2.5, 3, 3.5],
+            Di = [1.5f, 2, 2.5f, 3, 3.5f],
         };
-        Real[] b = [0.5, 1, 1.5, 2, 3.5];
+        Real[] b = [0.5f, 1, 1.5f, 2, 3.5f];
 
         return (matrix, b);
     } 

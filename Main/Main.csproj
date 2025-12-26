@@ -16,7 +16,8 @@
 
     <PropertyGroup>
         <!-- Use double precision floating point numbers -->
-        <DefineConstants>USE_DOUBLE;TRACE</DefineConstants>
+        <DefineConstants>TRACE;USE_DOUBLE</DefineConstants>
+        <!-- ;USE_DOUBLE -->
     </PropertyGroup>
 
     <ItemGroup>

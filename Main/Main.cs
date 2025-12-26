@@ -50,6 +50,7 @@ class Program
         var sw = Stopwatch.StartNew();
         Core.Init();
         Trace.WriteLine($"SparkCL Init: {sw.ElapsedMilliseconds}ms");
+        Trace.WriteLine($"Calculation type: {typeof(Real)}");
 
         BenchEisenstat();
         
@@ -75,15 +76,15 @@ class Program
     }
     
     static void BenchEisenstat() {
-        const int REPEAT_COUNT = 3;
+        const int REPEAT_COUNT = 5;
         const int REFINE_COUNT = 1;
         
         var task = new TaskRect4x5XY1();
         var prob = new ProblemLine(task, SRC_DIR + "InputRect4x5");
         prob.MeshRefine(new()
         {
-            XSplitCount = [64],
-            YSplitCount = [64],
+            XSplitCount = [1024],
+            YSplitCount = [1024],
             XStretchRatio = [1],
             YStretchRatio = [1],
         });
@@ -96,20 +97,22 @@ class Program
             
             for (int i = 0; i < REPEAT_COUNT; i++)
             {
-                // SolveEisenstatHost<CgmEisenstatHost>(prob);
+                SolveEisenstatHost<CgmEisenstatHost>(prob);
+                // SolveEisenstatHost<CgmHost>(prob);
+                // SolveOCL<CgmEisenstatOCL>(prob);
                 // SolveEisenstatHost<CgmEisenstatSimpleHost>(prob);
                 // SolveOCL<CgmOCL>(prob);
-                SolveOCL<CgmEisenstatOCL>(prob);
             }
 
             prob.Build<MsrSlaeBuilder>();
             
             for (int i = 0; i < REPEAT_COUNT; i++)
             {
-                // SolveEisenstatHost<CgmEisenstatHost>(prob);
+                SolveEisenstatHost<CgmEisenstatHost>(prob);
+                // SolveEisenstatHost<CgmHost>(prob);
+                // SolveOCL<CgmEisenstatOCL>(prob);
                 // SolveEisenstatHost<CgmEisenstatSimpleHost>(prob);
                 // SolveOCL<CgmOCL>(prob);
-                SolveOCL<CgmEisenstatOCL>(prob);
             }
 
             prob.MeshDouble();
@@ -132,11 +135,11 @@ class Program
             Rd1 = [..diag],
             Rd0 = [..diag],
         };
-        matrix.Rd0[0] += 0.5;
-        matrix.Ld0[0] += 0.5;
+        matrix.Rd0[0] += (Real)0.5;
+        matrix.Ld0[0] += (Real)0.5;
         Real[] b = [..identity];
-        b[0] += 0.5;        
-        b[1] += 0.5;        
+        b[0] += (Real)0.5;        
+        b[1] += (Real)0.5;        
         Real[] x = [..identity];
         x[1] += 1;
         x[2] += 1;
@@ -144,7 +147,7 @@ class Program
         
         var solver = CgmEisenstatHost.Construct(
             (int)1e+7,
-            1e-13
+            (Real)1e-13
         );
         solver.AllocateTemps(x.Length);
         
@@ -179,7 +182,8 @@ class Program
         
         sw.Stop();
         var err = prob.Lebeg2Err(ans);
-        Console.WriteLine($"(err {err}) (iters {iters}) (discrep: {rr})");
+        // Console.WriteLine($"(err {err}) (iters {iters}) (discrep: {rr})");
+        Console.WriteLine($"{err} {iters} {rr}");
         Trace.WriteLine($"Solver total: {sw.ElapsedMilliseconds}мс");
         Trace.Unindent();
     }
@@ -359,24 +363,24 @@ class Program
     static void ReverseI()
     {
         // u -> e
-        Real[] weights = [1, 0.5, 1, 1];
+        Real[] weights = [1, (Real)0.5, 1, 1];
         // измеренные напряжённости, с какой-то погрешностью
-        PairF64[] e_measured = [
-            new(3.710883057100038e-07, -4.652739107054252e-08),
-            new(1.046909531845134e-07, -6.388825590065409e-09),
-            new(4.878075851331915e-08, -1.811845815180536e-09),
-            new(2.858623606945764e-08, -7.38675306794607e-10)
+        PairReal[] e_measured = [
+            new((Real)3.710883057100038e-07, -(Real)4.652739107054252e-08),
+            new((Real)1.046909531845134e-07, -(Real)6.388825590065409e-09),
+            new((Real)4.878075851331915e-08, -(Real)1.811845815180536e-09),
+            new((Real)2.858623606945764e-08, -(Real)7.38675306794607e-10)
         ];
         // начальное значение проводимости
         Real i_guide = 2; // 1
         // истинные напряжённости
-        PairF64[] e_true = [
-            new(3.710883057100038e-07, -4.652739107054252e-08),
-            new(1.046909531845134e-07, -6.388825590065409e-09),
-            new(4.878075851331915e-08, -1.811845815180536e-09),
-            new(2.858623606945764e-08, -7.38675306794607e-10)
+        PairReal[] e_true = [
+            new((Real)3.710883057100038e-07, -(Real)4.652739107054252e-08),
+            new((Real)1.046909531845134e-07, -(Real)6.388825590065409e-09),
+            new((Real)4.878075851331915e-08, -(Real)1.811845815180536e-09),
+            new((Real)2.858623606945764e-08, -(Real)7.38675306794607e-10)
         ];
-        e_measured[1] *= 1.05;
+        e_measured[1] *= (Real)1.05;
         Real alpha = 0;
         
         Real j0 = 0;
@@ -396,7 +400,7 @@ class Program
         while (true)
         {
             // дифференциал
-            var diffU = new PairF64[4];
+            var diffU = new PairReal[4];
             for (int i = 0; i < 4; i++)
             {  
                 diffU[i] = -e0[i];
@@ -432,7 +436,7 @@ class Program
 
             iter++;
             if (j0 <= j1) {
-                beta /= 2.0;
+                beta /= (Real)2.0;
                 if (beta < 1.0/4.0) {
                     break;
                 }
@@ -450,24 +454,24 @@ class Program
     static void ReverseSigma()
     {
         // u -> e
-        Real[] weights = [1, 0.5, 1, 1];
+        Real[] weights = [1, (Real)0.5, 1, 1];
         // измеренные напряжённости, с какой-то погрешностью
-        PairF64[] e_measured = [
-            new(3.710883057100038e-07, -4.652739107054252e-08),
-            new(1.046909531845134e-07, -6.388825590065409e-09),
-            new(4.878075851331915e-08, -1.811845815180536e-09),
-            new(2.858623606945764e-08, -7.38675306794607e-10)
+        PairReal[] e_measured = [
+            new((Real)3.710883057100038e-07, -(Real)4.652739107054252e-08),
+            new((Real)1.046909531845134e-07, -(Real)6.388825590065409e-09),
+            new((Real)4.878075851331915e-08, -(Real)1.811845815180536e-09),
+            new((Real)2.858623606945764e-08, -(Real)7.38675306794607e-10)
         ];
         // начальное значение проводимости
-        Real u_guide = 6.5; // 6
+        Real u_guide = (Real)6.5; // 6
         // истинные напряжённости
-        PairF64[] e_true = [
-            new(3.710883057100038e-07, -4.652739107054252e-08),
-            new(1.046909531845134e-07, -6.388825590065409e-09),
-            new(4.878075851331915e-08, -1.811845815180536e-09),
-            new(2.858623606945764e-08, -7.38675306794607e-10)
+        PairReal[] e_true = [
+            new((Real)3.710883057100038e-07, -(Real)4.652739107054252e-08),
+            new((Real)1.046909531845134e-07, -(Real)6.388825590065409e-09),
+            new((Real)4.878075851331915e-08, -(Real)1.811845815180536e-09),
+            new((Real)2.858623606945764e-08, -(Real)7.38675306794607e-10)
         ];
-        e_measured[1] *= 1.05;
+        e_measured[1] *= (Real)1.05;
         // e_measured = e_true;
         Real alpha = 0;
         
@@ -488,11 +492,11 @@ class Program
         while (true)
         {
             // дифференциал
-            var diffU = new PairF64[4];
-            var e1 = ElectroOnce(1.05*u0);
+            var diffU = new PairReal[4];
+            var e1 = ElectroOnce((Real)1.05*u0);
             for (int i = 0; i < 4; i++)
             {  
-                diffU[i] = (e0[i]-e1[i])/(0.05*u0);
+                diffU[i] = (e0[i]-e1[i])/((Real)0.05*u0);
             }
             
             // A
@@ -526,7 +530,7 @@ class Program
 
             iter++;
             if (j0 <= j1) {
-                beta /= 2.0;
+                beta /= (Real)2.0;
                 if (beta < 1.0/4.0) {
                     break;
                 }
@@ -541,7 +545,7 @@ class Program
         Console.WriteLine($"Iterations: {iter}");
     }
     
-    static PairF64[] ElectroOnce(Real? sigma = null)
+    static PairReal[] ElectroOnce(Real? sigma = null)
     {
         var task = new TaskElectro();
         if (sigma.HasValue) {
@@ -586,7 +590,7 @@ class Program
         }
     }
     
-    static PairF64[] ElectroSolveOCL<T>(ProblemLine prob)
+    static PairReal[] ElectroSolveOCL<T>(ProblemLine prob)
     where T: SparkAlgos.SlaeSolver.ISlaeSolver
     {
         var (ans, iters, rr) = prob.SolveOCL<T>();
@@ -596,7 +600,7 @@ class Program
         // sensors
         Real[] sensR = [250, 500, 750, 1000];
         
-        var sensVals = new PairF64[4];
+        var sensVals = new PairReal[4];
         var res = new Real[4];
         var resNew = new Real[4];
         for (int i = 0; i < sensR.Length; i++)
@@ -670,7 +674,8 @@ class Program
         ioTime /= (ulong)1e+6;
         kernTime /= (ulong)1e+6;
 #endif
-        Console.WriteLine($"(err {err}) (iters {iters}) (discrep: {rr})");
+        // Console.WriteLine($"(err {err}) (iters {iters}) (discrep: {rr})");
+        Console.WriteLine($"{err} {iters} {rr}");
         Trace.Unindent();
         Trace.Write($"Solver total: {sw.ElapsedMilliseconds}мс");
 #if SPARKCL_COLLECT_TIME

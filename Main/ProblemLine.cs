@@ -34,7 +34,7 @@ using MathShards.Fem.Common;
 using MathShards.Mesh.RectMesh;
 
 public class ProblemLine {
-    TaskFuncs _funcs;
+    ITaskFuncs _funcs;
     SolverParams _problemParams;
     public SolverParams ProblemParams { get => _problemParams; }
     RefineParams _refineParams;
@@ -54,7 +54,7 @@ public class ProblemLine {
 
     // folder - директория с условиями задачи
     public ProblemLine(
-        TaskFuncs taskFunctions,
+        ITaskFuncs taskFunctions,
         string taskFolder,
         GlobalMatrixImplType buildType = GlobalMatrixImplType.Host
     ) {
@@ -105,7 +105,7 @@ public class ProblemLine {
         var slaeBuilder = T.Construct(_mesh, _funcs);
         slaeBuilder.GlobalMatrixImpl = buildType;
         (matrix, b) = slaeBuilder.Build();
-        Trace.WriteLine($"ProblemLine.Build total: {sw.ElapsedMilliseconds}");
+        Trace.WriteLine($"ProblemLine.Build total: {sw.ElapsedMilliseconds}ms");
     }
     
     public void MeshRefine(RefineParams refineParams)
@@ -162,11 +162,11 @@ public class ProblemLine {
         return result;
     }
     
-    public PairF64 GradAt(Span<Real> q, Real x, Real y)
+    public PairReal GradAt(Span<Real> q, Real x, Real y)
     {
         var X = _mesh.X;
         var Y = _mesh.Y;
-        PairF64 result = new(0, 0);
+        PairReal result = new(0, 0);
 
         var (xi, yi) = _mesh.GetElCoordsAtPoint(x, y);
 
@@ -182,7 +182,7 @@ public class ProblemLine {
             m[2] = (yi + 1) * X.Length + xi;
             m[3] = m[2] + 1;
 
-            var p01 = new PairF64(
+            var p01 = new PairReal(
                 (x - X[xi]) / hx,
                 (y - Y[yi]) / hy
             );
@@ -228,7 +228,7 @@ public class ProblemLine {
             m[2] = (yi + 1) * X.Length + xi;
             m[3] = m[2] + 1;
             
-            var p01 = new PairF64(
+            var p01 = new PairReal(
                 (x - X[xi]) / hx,
                 (y - Y[yi]) / hy
             );
